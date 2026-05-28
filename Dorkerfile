@@ -1,0 +1,30 @@
+FROM ubuntu:latest
+
+# تحديث النظام وتثبيت حزمة SSH مع أدوات الشبكة الأساسية
+RUN apt-get update && apt-get install -y \
+    openssh-server \
+    sudo \
+    curl \
+    wget \
+    git \
+    net-tools \
+    iputils-ping \
+    nano \
+    && rm -rf /var/lib/apt/lists/*
+
+# إعداد مجلد تشغيل الـ SSH
+RUN mkdir /var/run/sshd
+
+# تعديل إعدادات الـ SSH لتسمح بدخول الـ root بكلمة مرور
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
+
+# تحديد البورت 22
+EXPOSE 22
+
+# جلب ملف التشغيل السريع لتغيير كلمة المرور ديناميكياً
+COPY start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
+
