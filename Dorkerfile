@@ -1,5 +1,8 @@
 FROM ubuntu:latest
 
+# منع ظهور واجهات التثبيت التفاعلية لضمان اكتمال التثبيت بنجاح
+ENV DEBIAN_FRONTEND=noninteractive
+
 # تحديث النظام وتثبيت حزمة SSH مع أدوات الشبكة الأساسية
 RUN apt-get update && apt-get install -y \
     openssh-server \
@@ -13,20 +16,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # إعداد مجلد تشغيل الـ SSH وتوليد مفاتيح التشفير الـ Host Keys
-RUN mkdir /var/run/sshd && ssh-keygen -A
+RUN mkdir -p /var/run/sshd && ssh-keygen -A
 
-# تعديل إعدادات الـ SSH لتسمح بدخول الـ root بكلمة مرور
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-
-# 🛠️ إصلاح مشكلة الـ PAM (مهم جداً لمنع الـ Connection Closed)
-RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+# تعديل إعدادات الـ SSH لتسمح بدخول الـ root بكلمة مرور وإصلاح الـ PAM
+RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config \
+    && sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
 
 # تحديد البورت 22
 EXPOSE 22
 
-# جلب ملف التشغيل السريع
-COPY start.sh /start.sh
-RUN chmod +x /start.sh
-
-CMD ["/start.sh"]
+# تشغيل السيرفر وتعيين كلمة المرور ديناميكياً من متغيرات البيئة مباشرة
+CMD ["/bin/bash", "-c", "PASSWORD=${SSH_PASSWORD:-'RootPassword123!'} && echo \"root:$PASSWORD\" | chpasswd && echo '==============================================' && echo 'SSH Server هو الآن جاهز للعمل!' && echo '==============================================' && exec sshd -D"]
