@@ -12,19 +12,21 @@ RUN apt-get update && apt-get install -y \
     nano \
     && rm -rf /var/lib/apt/lists/*
 
-# إعداد مجلد تشغيل الـ SSH
-RUN mkdir /var/run/sshd
+# إعداد مجلد تشغيل الـ SSH وتوليد مفاتيح التشفير الـ Host Keys
+RUN mkdir /var/run/sshd && ssh-keygen -A
 
 # تعديل إعدادات الـ SSH لتسمح بدخول الـ root بكلمة مرور
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
 
+# 🛠️ إصلاح مشكلة الـ PAM (مهم جداً لمنع الـ Connection Closed)
+RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+
 # تحديد البورت 22
 EXPOSE 22
 
-# جلب ملف التشغيل السريع لتغيير كلمة المرور ديناميكياً
+# جلب ملف التشغيل السريع
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
 CMD ["/start.sh"]
-
